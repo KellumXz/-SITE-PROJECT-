@@ -2,65 +2,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Toggle AUTO_READ_STATUS</title>
+  <title>Advanced AUTO_READ_STATUS Editor</title>
   <style>
-    body { font-family: Arial; background: #f9f9f9; padding: 40px; }
-    .container {
-      max-width: 500px; margin: auto; background: #fff; padding: 30px;
-      border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    body {
+      font-family: Arial, sans-serif;
+      background: #e9ecef;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
-    input, label { font-size: 16px; }
-    input[type="text"] {
-      width: 100%; padding: 10px; margin: 15px 0; border-radius: 6px; border: 1px solid #ccc;
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-width: 500px;
+      width: 100%;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input[type="text"], button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .hidden {
+      display: none;
     }
     .switch-container {
-      display: flex; align-items: center; justify-content: space-between;
-      background: #f0f0f0; padding: 10px 15px; border-radius: 8px;
-    }
-    .switch-container span {
-      font-size: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8f9fa;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-top: 20px;
     }
     .toggle-switch {
       position: relative; display: inline-block; width: 50px; height: 26px;
     }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .slider {
-      position: absolute; cursor: pointer; top: 0; left: 0;
-      right: 0; bottom: 0; background-color: #ccc;
-      transition: .4s; border-radius: 34px;
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc; transition: .4s; border-radius: 34px;
     }
     .slider:before {
-      position: absolute; content: "";
-      height: 20px; width: 20px; left: 4px; bottom: 3px;
-      background-color: white; transition: .4s; border-radius: 50%;
+      position: absolute; content: ""; height: 20px; width: 20px;
+      left: 4px; bottom: 3px; background-color: white;
+      transition: .4s; border-radius: 50%;
     }
     input:checked + .slider {
-      background-color: #4caf50;
+      background-color: #28a745;
     }
     input:checked + .slider:before {
       transform: translateX(24px);
     }
-    #status { margin-top: 15px; font-weight: bold; }
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Toggle <code>AUTO_READ_STATUS</code> in <code>settings/settings.json</code></h2>
-    <input type="text" id="token" placeholder="Enter your GitHub Token (with repo scope)">
-    <div class="switch-container">
-      <span>Toggle AUTO_READ_STATUS</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="toggleStatus" onchange="updateSetting()">
-        <span class="slider"></span>
-      </label>
+  <div class="card">
+    <h2>Update AUTO_READ_STATUS</h2>
+
+    <div id="token-section">
+      <input type="text" id="token" placeholder="Enter your GitHub Token (with repo scope)">
+      <button onclick="submitToken()">Done</button>
     </div>
+
+    <div id="main-section" class="hidden">
+      <div class="switch-container">
+        <span>AUTO_READ_STATUS</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleStatus">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <button onclick="updateSetting()">UPDATE</button>
+    </div>
+
     <div id="status"></div>
   </div>
 
   <script>
-    let fileSha = "", currentContent = "", username = "";
+    let fileSha = "", currentContent = "", username = "", token = "";
 
     async function fetchUser(headers) {
       const res = await fetch("https://api.github.com/user", { headers });
@@ -68,8 +115,8 @@
       username = user.login;
     }
 
-    async function loadSetting() {
-      const token = document.getElementById("token").value;
+    async function submitToken() {
+      token = document.getElementById("token").value;
       const headers = {
         Authorization: "token " + token,
         Accept: "application/vnd.github.v3+json"
@@ -83,17 +130,18 @@
       currentContent = decodeURIComponent(escape(atob(data.content)));
       const json = JSON.parse(currentContent);
       document.getElementById("toggleStatus").checked = json.AUTO_READ_STATUS === "on";
-      document.getElementById("status").innerText = "Loaded current status.";
+
+      document.getElementById("token-section").classList.add("hidden");
+      document.getElementById("main-section").classList.remove("hidden");
+      document.getElementById("status").innerText = "Loaded successfully.";
     }
 
     async function updateSetting() {
-      const token = document.getElementById("token").value;
       const newStatus = document.getElementById("toggleStatus").checked ? "on" : "off";
       const headers = {
         Authorization: "token " + token,
         Accept: "application/vnd.github.v3+json"
       };
-      if (!username) await fetchUser(headers);
       const json = JSON.parse(currentContent);
       json.AUTO_READ_STATUS = newStatus;
       const updatedContent = JSON.stringify(json, null, 2);
@@ -117,8 +165,6 @@
         document.getElementById("status").innerText = "❌ Failed to update setting.";
       }
     }
-
-    document.getElementById("token").addEventListener("change", loadSetting);
   </script>
 </body>
 </html>
