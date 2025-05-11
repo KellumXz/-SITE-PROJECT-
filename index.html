@@ -4,72 +4,104 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Edit settings.json - PRIME-NIYOX-DB</title>
+  <title>Toggle AUTO_READ_STATUS</title>
   <style>
-    body { font-family: Arial; background: #f4f4f4; padding: 30px; }
-    .container { max-width: 700px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    h2 { margin-bottom: 10px; }
-    input, textarea, button {
-      width: 100%; padding: 12px; margin: 10px 0;
-      border-radius: 6px; border: 1px solid #ccc; font-size: 14px;
+    body { font-family: Arial; background: #f9f9f9; padding: 40px; }
+    .container {
+      max-width: 500px; margin: auto; background: #fff; padding: 30px;
+      border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    button {
-      background: #007bff; color: white; border: none; cursor: pointer;
+    input, label { font-size: 16px; }
+    input[type="text"] {
+      width: 100%; padding: 10px; margin: 15px 0; border-radius: 6px; border: 1px solid #ccc;
     }
-    button:hover { background: #0056b3; }
-    pre { background: #f8f8f8; padding: 10px; overflow-x: auto; }
+    .switch-container {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f0f0f0; padding: 10px 15px; border-radius: 8px;
+    }
+    .switch-container span {
+      font-size: 16px;
+    }
+    .toggle-switch {
+      position: relative; display: inline-block; width: 50px; height: 26px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0;
+      right: 0; bottom: 0; background-color: #ccc;
+      transition: .4s; border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute; content: "";
+      height: 20px; width: 20px; left: 4px; bottom: 3px;
+      background-color: white; transition: .4s; border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #4caf50;
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    #status { margin-top: 15px; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Edit <code>settings/settings.json</code> in <code>PRIME-NIYOX-DB</code></h2>
+    <h2>Toggle <code>AUTO_READ_STATUS</code> in <code>settings/settings.json</code></h2>
     <input type="text" id="token" placeholder="Enter your GitHub Token (with repo scope)">
-    <button onclick="loadSettings()">Load settings.json</button>
-    <textarea id="editor" rows="15" placeholder="Settings content will appear here..."></textarea>
-    <input type="text" id="commitMessage" placeholder="Enter commit message">
-    <button onclick="updateSettings()">Save Changes</button>
+    <div class="switch-container">
+      <span>Toggle AUTO_READ_STATUS</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggleStatus" onchange="updateSetting()">
+        <span class="slider"></span>
+      </label>
+    </div>
     <div id="status"></div>
   </div>
 
   <script>
-    let fileSha = "";
-    async function loadSettings() {
-      const token = document.getElementById("token").value;
-      const headers = {
-        Authorization: "token " + token,
-        Accept: "application/vnd.github.v3+json"
-      };
-      const userResp = await fetch("https://api.github.com/user", { headers });
-      if (!userResp.ok) return document.getElementById("status").innerText = "Invalid token.";
-      const user = await userResp.json();
-      const url = `https://api.github.com/repos/${user.login}/PRIME-NIYOX-DB/contents/settings/settings.json`;
+    let fileSha = "", currentContent = "", username = "";
 
-      const res = await fetch(url, { headers });
-      if (!res.ok) return document.getElementById("status").innerText = "Could not fetch settings.json";
-      const data = await res.json();
-      fileSha = data.sha;
-      const content = decodeURIComponent(escape(atob(data.content)));
-      document.getElementById("editor").value = content;
-      document.getElementById("status").innerText = "settings.json loaded.";
+    async function fetchUser(headers) {
+      const res = await fetch("https://api.github.com/user", { headers });
+      const user = await res.json();
+      username = user.login;
     }
 
-    async function updateSettings() {
+    async function loadSetting() {
       const token = document.getElementById("token").value;
-      const newContent = document.getElementById("editor").value;
-      const commitMsg = document.getElementById("commitMessage").value || "Update settings.json";
-
       const headers = {
         Authorization: "token " + token,
         Accept: "application/vnd.github.v3+json"
       };
+      await fetchUser(headers);
+      const url = `https://api.github.com/repos/${username}/PRIME-NIYOX-DB/contents/settings/settings.json`;
+      const res = await fetch(url, { headers });
+      if (!res.ok) return document.getElementById("status").innerText = "❌ Failed to load settings.json";
+      const data = await res.json();
+      fileSha = data.sha;
+      currentContent = decodeURIComponent(escape(atob(data.content)));
+      const json = JSON.parse(currentContent);
+      document.getElementById("toggleStatus").checked = json.AUTO_READ_STATUS === "on";
+      document.getElementById("status").innerText = "Loaded current status.";
+    }
 
-      const userResp = await fetch("https://api.github.com/user", { headers });
-      const user = await userResp.json();
-      const url = `https://api.github.com/repos/${user.login}/PRIME-NIYOX-DB/contents/settings/settings.json`;
+    async function updateSetting() {
+      const token = document.getElementById("token").value;
+      const newStatus = document.getElementById("toggleStatus").checked ? "on" : "off";
+      const headers = {
+        Authorization: "token " + token,
+        Accept: "application/vnd.github.v3+json"
+      };
+      if (!username) await fetchUser(headers);
+      const json = JSON.parse(currentContent);
+      json.AUTO_READ_STATUS = newStatus;
+      const updatedContent = JSON.stringify(json, null, 2);
+      const url = `https://api.github.com/repos/${username}/PRIME-NIYOX-DB/contents/settings/settings.json`;
 
       const payload = {
-        message: commitMsg,
-        content: btoa(unescape(encodeURIComponent(newContent))),
+        message: `Set AUTO_READ_STATUS to ${newStatus}`,
+        content: btoa(unescape(encodeURIComponent(updatedContent))),
         sha: fileSha
       };
 
@@ -80,11 +112,13 @@
       });
 
       if (res.ok) {
-        document.getElementById("status").innerText = "✅ settings.json updated successfully.";
+        document.getElementById("status").innerText = `✅ AUTO_READ_STATUS set to "${newStatus}"`;
       } else {
-        document.getElementById("status").innerText = "❌ Failed to update settings.json.";
+        document.getElementById("status").innerText = "❌ Failed to update setting.";
       }
     }
+
+    document.getElementById("token").addEventListener("change", loadSetting);
   </script>
 </body>
 </html>
