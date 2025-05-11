@@ -15,18 +15,24 @@
   <input type="text" id="name" placeholder="Your Name" required />
   <input type="password" id="token" placeholder="GitHub Token" required />
   <button onclick="deploy()">Deploy</button>
+  <button onclick="uploadToRepo()" id="uploadBtn" style="display:none;">Upload config.js to Repo</button>
 
   <div id="status"></div>
   <pre id="configPreview" style="display: none;"></pre>
   <a id="downloadLink" download="config.js" style="display: none;">Download config.js</a>
 
   <script>
+    let username = "";
+    let token = "";
+    let configContent = "";
+
     async function deploy() {
       const name = document.getElementById("name").value.trim();
-      const token = document.getElementById("token").value.trim();
+      token = document.getElementById("token").value.trim();
       const status = document.getElementById("status");
       const configPreview = document.getElementById("configPreview");
       const downloadLink = document.getElementById("downloadLink");
+      const uploadBtn = document.getElementById("uploadBtn");
 
       if (!name || !token) {
         status.textContent = "Please enter both name and token.";
@@ -35,8 +41,6 @@
 
       status.textContent = "Getting GitHub username...";
 
-      // Get username from token
-      let username;
       try {
         const res = await fetch("https://api.github.com/user", {
           headers: { Authorization: `token ${token}` }
@@ -51,30 +55,23 @@
 
       status.textContent = `Hello ${username}! Forking and starring repo...`;
 
-      // Star the repo
       try {
         await fetch("https://api.github.com/user/starred/Kx-Shrii/CLICKER-X-MD", {
           method: "PUT",
           headers: { Authorization: `token ${token}` }
         });
-      } catch (err) {
-        console.warn("Failed to star repo");
-      }
-
-      // Fork the repo
-      try {
         await fetch("https://api.github.com/repos/Kx-Shrii/CLICKER-X-MD/forks", {
           method: "POST",
           headers: { Authorization: `token ${token}` }
         });
       } catch (err) {
-        status.textContent = "Error forking repo.";
+        status.textContent = "Error forking/starring repo.";
         return;
       }
 
       status.textContent = "Repo forked and starred! Generating config.js...";
 
-      const configContent = `module.exports = {
+      configContent = `module.exports = {
   name: "${name}",
   githubUsername: "${username}",
   token: "${token}"
@@ -83,14 +80,47 @@
       configPreview.textContent = configContent;
       configPreview.style.display = "block";
 
-      // Create downloadable config.js file
       const blob = new Blob([configContent], { type: "application/javascript" });
       const url = URL.createObjectURL(blob);
       downloadLink.href = url;
       downloadLink.style.display = "inline-block";
       downloadLink.textContent = "Download config.js";
 
-      status.textContent = "config.js generated successfully.";
+      uploadBtn.style.display = "inline-block";
+      status.textContent = "Ready to upload config.js to your forked repo.";
+    }
+
+    async function uploadToRepo() {
+      const status = document.getElementById("status");
+
+      status.textContent = "Uploading config.js to your repo...";
+
+      const contentBase64 = btoa(unescape(encodeURIComponent(configContent)));
+
+      const url = `https://api.github.com/repos/${username}/CLICKER-X-MD/contents/config.js`;
+
+      try {
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: {
+            Authorization: `token ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: "Add config.js",
+            content: contentBase64
+          })
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          status.textContent = "config.js uploaded successfully!";
+        } else {
+          status.textContent = `Failed to upload: ${result.message}`;
+        }
+      } catch (err) {
+        status.textContent = "Error uploading config.js: " + err.message;
+      }
     }
   </script>
 </body>
