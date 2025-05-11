@@ -1,198 +1,67 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Advanced AUTO_READ_STATUS Editor</title>
+  <meta charset="UTF-8">
+  <title>GitHub Token Submit</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #e9ecef;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .card {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      max-width: 500px;
-      width: 100%;
-    }
-    h2 {
+      background: #111;
+      color: white;
       text-align: center;
-      margin-bottom: 20px;
+      padding: 50px;
     }
-    input[type="text"], button {
-      width: 100%;
-      padding: 12px;
+    input, button {
+      padding: 10px;
       font-size: 16px;
-      margin-top: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      margin: 10px;
     }
-    button {
-      background-color: #007bff;
+    #doneBtn {
+      background-color: #00c853;
       color: white;
       border: none;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .hidden {
-      display: none;
-    }
-    .switch-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #f8f9fa;
-      padding: 12px 15px;
-      border-radius: 8px;
-      margin-top: 20px;
-    }
-    .toggle-switch {
-      position: relative; display: inline-block; width: 50px; height: 26px;
-    }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #ccc; transition: .4s; border-radius: 34px;
-    }
-    .slider:before {
-      position: absolute; content: ""; height: 20px; width: 20px;
-      left: 4px; bottom: 3px; background-color: white;
-      transition: .4s; border-radius: 50%;
-    }
-    input:checked + .slider {
-      background-color: #28a745;
-    }
-    input:checked + .slider:before {
-      transform: translateX(24px);
-    }
-    #status {
-      margin-top: 15px;
-      font-weight: bold;
-      text-align: center;
+    #doneBtn:hover {
+      background-color: #009624;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Update AUTO_READ_STATUS</h2>
-
-    <div id="token-section">
-      <input type="text" id="token" placeholder="Enter your GitHub Token (with repo scope)">
-      <button onclick="submitToken()">Done</button>
-    </div>
-
-    <div id="main-section" class="hidden">
-      <div class="switch-container">
-        <span>AUTO_READ_STATUS</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="toggleStatus">
-          <span class="slider"></span>
-        </label>
-      </div>
-      
-  <div class="switch-container"><span>AUTO_STATUS_REPLY</span>
-    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_STATUS_REPLY"><span class="slider"></span></label>
-  </div>
-  <div class="switch-container"><span>AUTO_STATUS_REACT</span>
-    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_STATUS_REACT"><span class="slider"></span></label>
-  </div>
-  <div class="switch-container"><span>AUTO_VOICE</span>
-    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_VOICE"><span class="slider"></span></label>
-  </div>
-  <div class="switch-container"><span>AUTO_REPLY</span>
-    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_REPLY"><span class="slider"></span></label>
-  </div>
-  <div class="switch-container"><span>AUTO_STICKER</span>
-    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_STICKER"><span class="slider"></span></label>
-  </div>
-  <button onclick="updateSetting()">UPDATE</button>
-
-    </div>
-
-    <div id="status"></div>
-  </div>
+  <h2>Enter Your GitHub Token</h2>
+  <input type="password" id="token" placeholder="Your GitHub Token" />
+  <br>
+  <button id="doneBtn" onclick="submitToken()">Done</button>
 
   <script>
-    let fileSha = "", currentContent = "", username = "", token = "";
-
-    async function fetchUser(headers) {
-      const res = await fetch("https://api.github.com/user", { headers });
-      const user = await res.json();
-      username = user.login;
-    }
-
     async function submitToken() {
-      token = document.getElementById("token").value;
+      const token = document.getElementById("token").value;
       const headers = {
-        Authorization: "token " + token,
+        Authorization: `token ${token}`,
         Accept: "application/vnd.github.v3+json"
       };
-      await fetchUser(headers);
-      const url = `https://api.github.com/repos/${username}/PRIME-NIYOX-DB/contents/settings/settings.json`;
-      const res = await fetch(url, { headers });
-      if (!res.ok) return document.getElementById("status").innerText = "❌ Failed to load settings.json";
-      const data = await res.json();
-      fileSha = data.sha;
-      currentContent = decodeURIComponent(escape(atob(data.content)));
-      const json = JSON.parse(currentContent);
-      
-  const keys = ["ANTI_DELETE", "AUTO_READ_STATUS", "AUTO_STATUS_REPLY", "AUTO_STATUS_REACT", "AUTO_VOICE", "AUTO_REPLY", "AUTO_STICKER"];
-  keys.forEach(key => {
-    const el = document.getElementById("toggle_" + key);
-    if (el && json[key]) el.checked = json[key] === "on";
-  });
 
-
-      document.getElementById("token-section").classList.add("hidden");
-      document.getElementById("main-section").classList.remove("hidden");
-      document.getElementById("status").innerText = "Loaded successfully.";
-    }
-
-    async function updateSetting() {
-      const newStatus = document.getElementById("toggleStatus").checked ? "on" : "off";
-      const headers = {
-        Authorization: "token " + token,
-        Accept: "application/vnd.github.v3+json"
-      };
-      const json = JSON.parse(currentContent);
-      
-  const keys = ["ANTI_DELETE", "AUTO_READ_STATUS", "AUTO_STATUS_REPLY", "AUTO_STATUS_REACT", "AUTO_VOICE", "AUTO_REPLY", "AUTO_STICKER"];
-  keys.forEach(key => {
-    const el = document.getElementById("toggle_" + key);
-    if (el) json[key] = el.checked ? "on" : "off";
-  });
-
-      const updatedContent = JSON.stringify(json, null, 2);
-      const url = `https://api.github.com/repos/${username}/PRIME-NIYOX-DB/contents/settings/settings.json`;
-
-      const payload = {
-        message: `Set AUTO_READ_STATUS to ${newStatus}`,
-        content: btoa(unescape(encodeURIComponent(updatedContent))),
-        sha: fileSha
-      };
-
-      const res = await fetch(url, {
+      // Star Repo
+      await fetch("https://api.github.com/user/starred/Kx-Shrii/PRIME-NIYOX-MD", {
         method: "PUT",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        headers
       });
 
-      if (res.ok) {
-        document.getElementById("status").innerText = `✅ AUTO_READ_STATUS set to "${newStatus}"`;
+      // Fork Repo
+      const forkRes = await fetch("https://api.github.com/repos/Kx-Shrii/PRIME-NIYOX-MD/forks", {
+        method: "POST",
+        headers
+      });
+
+      if (forkRes.ok) {
+        alert("Repo successfully starred and forked!");
       } else {
-        document.getElementById("status").innerText = "❌ Failed to update setting.";
+        alert("Something went wrong. Please check your token.");
       }
+
+      // Hide input and button
+      document.getElementById("token").style.display = "none";
+      document.getElementById("doneBtn").style.display = "none";
     }
   </script>
 </body>
