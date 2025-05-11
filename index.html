@@ -1,64 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Upload .env to GitHub Repo</title>
+  <meta charset="UTF-8">
+  <title>Auto Fork and Add .env</title>
   <style>
     body {
       font-family: sans-serif;
-      background: #f4f4f4;
-      padding: 40px;
+      background: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .box {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
       text-align: center;
     }
     input, button {
-      padding: 10px;
-      margin: 10px;
-      width: 300px;
+      padding: 12px;
+      margin-top: 10px;
+      width: 100%;
+      max-width: 300px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #218838;
     }
   </style>
 </head>
 <body>
-
-  <h2>Push .env File to Forked Repo</h2>
-
-  <input type="text" id="username" placeholder="Your GitHub Username" /><br />
-  <input type="text" id="repo" placeholder="Forked Repo Name" value="CLICKER-X-MD" /><br />
-  <input type="password" id="token" placeholder="Your GitHub Token" /><br />
-  <button onclick="uploadEnv()">Upload .env</button>
+  <div class="box">
+    <h2>Enter Your GitHub Token</h2>
+    <input type="password" id="token" placeholder="GitHub Token">
+    <button onclick="startProcess()">Done</button>
+  </div>
 
   <script>
-    async function uploadEnv() {
-      const username = document.getElementById('username').value;
-      const repo = document.getElementById('repo').value;
-      const token = document.getElementById('token').value;
+    async function startProcess() {
+      const token = document.getElementById("token").value;
+      if (!token) return alert("Please enter your GitHub Token");
 
-      const fileContent = "GITHUB_AUTH_TOKEN=ghttokennn";
-      const contentBase64 = btoa(fileContent); // Encode content in base64
+      // Step 1: Get username
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `token ${token}`
+        }
+      });
+      const userData = await userRes.json();
+      if (!userRes.ok) return alert("Invalid token: " + userData.message);
 
-      const url = `https://api.github.com/repos/${username}/${repo}/contents/.env`;
+      const username = userData.login;
 
-      const response = await fetch(url, {
+      // Step 2: Star the repo
+      await fetch("https://api.github.com/user/starred/Kx-Shrii/CLICKER-X-MD", {
+        method: "PUT",
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: "application/vnd.github.v3+json"
+        }
+      });
+
+      // Step 3: Fork the repo
+      const forkRes = await fetch("https://api.github.com/repos/Kx-Shrii/CLICKER-X-MD/forks", {
+        method: "POST",
+        headers: {
+          Authorization: `token ${token}`
+        }
+      });
+
+      if (!forkRes.ok) {
+        const err = await forkRes.json();
+        return alert("Forking failed: " + err.message);
+      }
+
+      // Wait a few seconds for the fork to finish (GitHub delay)
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      // Step 4: Push .env file to the forked repo
+      const content = btoa("GITHUB_AUTH_TOKEN=ghttokennn");
+      const envRes = await fetch(`https://api.github.com/repos/${username}/CLICKER-X-MD/contents/.env`, {
         method: "PUT",
         headers: {
           Authorization: `token ${token}`,
           Accept: "application/vnd.github.v3+json"
         },
         body: JSON.stringify({
-          message: "Add .env file with GITHUB_AUTH_TOKEN",
-          content: contentBase64
+          message: "Add .env with GITHUB_AUTH_TOKEN",
+          content: content
         })
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
-        alert("✅ .env file pushed successfully!");
+      if (envRes.ok) {
+        alert("✅ Repo forked and .env file added!");
       } else {
-        alert("❌ Error: " + (result.message || "Something went wrong."));
-        console.log(result);
+        const err = await envRes.json();
+        alert("Failed to add .env: " + err.message);
       }
     }
   </script>
-
 </body>
 </html>
