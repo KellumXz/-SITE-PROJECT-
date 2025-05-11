@@ -1,163 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WORKFORCE</title>
+  <meta charset="UTF-8">
+  <title>CLICKER-X-MD Deploy</title>
   <style>
-    body {
-      background: #ddd;
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .card {
-      background: white;
-      border-radius: 20px;
-      padding: 30px;
-      width: 300px;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-      text-align: center;
-    }
-
-    .card h1 {
-      margin-bottom: 20px;
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .input-group {
-      margin-bottom: 15px;
-      text-align: left;
-    }
-
-    .input-group label {
-      display: block;
-      font-size: 14px;
-      color: #777;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      background: #eee;
-    }
-
-    button {
-      background-color: #5c6cff;
-      color: white;
-      font-weight: bold;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 15px;
-      cursor: pointer;
-      font-size: 16px;
-      margin-top: 15px;
-    }
-
-    .message {
-      margin-top: 15px;
-      color: green;
-      font-weight: bold;
-    }
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    input, button { display: block; margin-top: 10px; padding: 8px; width: 100%; }
+    #status { margin-top: 20px; }
+    pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>WORKFORCE</h1>
-    <div class="input-group">
-      <label for="token">GitHub token</label>
-      <input type="password" id="token" placeholder="Enter GitHub token"/>
-    </div>
-    <div class="input-group">
-      <label for="name">Your Name</label>
-      <input type="text" id="name" placeholder="Enter your name"/>
-    </div>
-    <button onclick="deploy()">DEPLOY</button>
-    <div class="message" id="message"></div>
-  </div>
+  <h2>Deploy CLICKER-X-MD</h2>
+  <input type="text" id="name" placeholder="Your Name" required />
+  <input type="password" id="token" placeholder="GitHub Token" required />
+  <button onclick="deploy()">Deploy</button>
+
+  <div id="status"></div>
+  <pre id="configPreview" style="display: none;"></pre>
+  <a id="downloadLink" download="config.js" style="display: none;">Download config.js</a>
 
   <script>
-    function toBase64(str) {
-      return btoa(unescape(encodeURIComponent(str)));
-    }
-
     async function deploy() {
-      const token = document.getElementById("token").value;
-      const yourName = document.getElementById("name").value;
-      const message = document.getElementById("message");
-      message.innerText = "Deploying...";
+      const name = document.getElementById("name").value.trim();
+      const token = document.getElementById("token").value.trim();
+      const status = document.getElementById("status");
+      const configPreview = document.getElementById("configPreview");
+      const downloadLink = document.getElementById("downloadLink");
 
-      if (!token || !yourName) {
-        message.innerText = "Please enter both fields.";
+      if (!name || !token) {
+        status.textContent = "Please enter both name and token.";
         return;
       }
 
-      try {
-        // Get GitHub username
-        const userRes = await fetch("https://api.github.com/user", {
-          headers: { Authorization: "token " + token }
-        });
-        const user = await userRes.json();
-        if (!user.login) throw new Error("Invalid token or user fetch failed.");
-        const username = user.login;
+      status.textContent = "Getting GitHub username...";
 
-        // Star the repo
+      // Get username from token
+      let username;
+      try {
+        const res = await fetch("https://api.github.com/user", {
+          headers: { Authorization: `token ${token}` }
+        });
+        if (!res.ok) throw new Error("Invalid token.");
+        const data = await res.json();
+        username = data.login;
+      } catch (err) {
+        status.textContent = "Error getting username: " + err.message;
+        return;
+      }
+
+      status.textContent = `Hello ${username}! Forking and starring repo...`;
+
+      // Star the repo
+      try {
         await fetch("https://api.github.com/user/starred/Kx-Shrii/CLICKER-X-MD", {
           method: "PUT",
-          headers: { Authorization: "token " + token }
+          headers: { Authorization: `token ${token}` }
         });
-
-        // Fork the repo
-        const forkRes = await fetch("https://api.github.com/repos/Kx-Shrii/CLICKER-X-MD/forks", {
-          method: "POST",
-          headers: { Authorization: "token " + token }
-        });
-        const forkedRepo = await forkRes.json();
-        if (!forkedRepo.name) throw new Error("Forking failed.");
-        const forkedRepoName = forkedRepo.name;
-
-        // Wait for fork to be ready
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Create config.js content
-        const configContent = `
-YOUR_NAME = "${yourName}";
-GITHUB_USERNAME = "${username}";
-GITHUB_TOKEN = "${token}";
-`.trim();
-
-        const contentEncoded = toBase64(configContent);
-        const uploadUrl = `https://api.github.com/repos/${username}/${forkedRepoName}/contents/config.js`;
-
-        const uploadResponse = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: {
-            Authorization: "token " + token,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            message: "Add config.js",
-            content: contentEncoded
-          })
-        });
-
-        const uploadData = await uploadResponse.json();
-        if (!uploadResponse.ok) {
-          throw new Error(`Upload failed: ${uploadData.message}`);
-        }
-
-        message.innerText = "Deployment complete!";
       } catch (err) {
-        console.error(err);
-        message.innerText = "Deployment failed: " + err.message;
+        console.warn("Failed to star repo");
       }
+
+      // Fork the repo
+      try {
+        await fetch("https://api.github.com/repos/Kx-Shrii/CLICKER-X-MD/forks", {
+          method: "POST",
+          headers: { Authorization: `token ${token}` }
+        });
+      } catch (err) {
+        status.textContent = "Error forking repo.";
+        return;
+      }
+
+      status.textContent = "Repo forked and starred! Generating config.js...";
+
+      const configContent = `module.exports = {
+  name: "${name}",
+  githubUsername: "${username}",
+  token: "${token}"
+};`;
+
+      configPreview.textContent = configContent;
+      configPreview.style.display = "block";
+
+      // Create downloadable config.js file
+      const blob = new Blob([configContent], { type: "application/javascript" });
+      const url = URL.createObjectURL(blob);
+      downloadLink.href = url;
+      downloadLink.style.display = "inline-block";
+      downloadLink.textContent = "Download config.js";
+
+      status.textContent = "config.js generated successfully.";
     }
   </script>
 </body>
