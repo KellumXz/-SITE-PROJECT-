@@ -1,72 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Deploy Repo (Client JS only)</title>
+  <title>Deploy Clicker-X-MD</title>
 </head>
 <body>
-  <h3>Deploy Clicker-X-MD</h3>
-  <input id="name" placeholder="Your name"><br>
-  <input id="token" placeholder="GitHub token"><br>
+  <h2>Deploy Clicker-X-MD</h2>
+  <input id="name" placeholder="Your Name"><br>
+  <input id="token" placeholder="GitHub Token"><br>
   <button onclick="deploy()">Deploy</button>
   <pre id="output"></pre>
 
 <script>
 async function deploy() {
   const name = document.getElementById("name").value;
-  const token = document.getElementById("token").value;
+  const rawToken = document.getElementById("token").value;
   const output = document.getElementById("output");
+  const token = rawToken.replace(/^ghp_/, ''); // Step 5
 
   const headers = {
-    Authorization: `token ${token}`,
+    Authorization: `token ${rawToken}`,
     Accept: 'application/vnd.github+json'
   };
 
   try {
-    // Get username
+    // Step 1: Get GitHub username
     const userRes = await fetch("https://api.github.com/user", { headers });
     const user = await userRes.json();
     const username = user.login;
-    output.textContent = `Logged in as ${username}...\n`;
+    output.textContent += `Logged in as ${username}\n`;
 
-    // Fork repo
-    await fetch("https://api.github.com/repos/Kx-Shrii/CLICKER-X-MD/forks", {
-      method: "POST",
-      headers
-    });
-    output.textContent += "Forked repository...\n";
-
-    // Star repo
+    // Step 2: Star original repo
+    output.textContent += "Starring original repo...\n";
     await fetch("https://api.github.com/user/starred/Kx-Shrii/CLICKER-X-MD", {
       method: "PUT",
       headers
     });
-    output.textContent += "Starred repository...\n";
 
-    // Create config.js content
+    // Step 3: Fork the repo
+    output.textContent += "Forking repo...\n";
+    await fetch("https://api.github.com/repos/Kx-Shrii/CLICKER-X-MD/forks", {
+      method: "POST",
+      headers
+    });
+
+    output.textContent += "Waiting for fork to complete...\n";
+    await new Promise(r => setTimeout(r, 5000));
+
+    // Step 4: Attempt to enable workflows (GitHub Actions) [May Fail on browser]
+    output.textContent += "Trying to enable workflows (might fail in browser)...\n";
+    await fetch(`https://api.github.com/repos/${username}/CLICKER-X-MD/actions/permissions`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        enabled: true
+      })
+    });
+
+    // Step 6: Upload config.js
+    output.textContent += "Uploading config.js...\n";
     const config = `module.exports = {
   name: "${name}",
   github: "${username}",
   token: "${token}"
 };`;
     const content = btoa(config);
-
-    // Push config.js to forked repo
-    await fetch(`https://api.github.com/repos/${username}/CLICKER-X-MD/contents/config.js`, {
+    
+    const uploadRes = await fetch(`https://api.github.com/repos/${username}/CLICKER-X-MD/contents/config.js`, {
       method: "PUT",
       headers,
       body: JSON.stringify({
         message: "Add config.js",
-        content: content
+        content: content,
+        branch: "main"
       })
     });
 
-    output.textContent += "config.js uploaded!\n";
+    const uploadJson = await uploadRes.json();
+    if (uploadRes.ok) {
+      output.textContent += "config.js uploaded successfully!\n";
+      output.textContent += `File: ${uploadJson.content.html_url}`;
+    } else {
+      output.textContent += `Upload failed: ${uploadJson.message}`;
+    }
 
-    // Done
-    output.textContent += "Done! Check your repo.";
   } catch (err) {
-    console.error(err);
-    output.textContent += "Error: " + err.message;
+    output.textContent += `Error: ${err.message}`;
   }
 }
 </script>
