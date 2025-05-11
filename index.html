@@ -100,7 +100,24 @@
           <span class="slider"></span>
         </label>
       </div>
-      <button onclick="updateSetting()">UPDATE</button>
+      
+  <div class="switch-container"><span>AUTO_STATUS_REPLY</span>
+    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_STATUS_REPLY"><span class="slider"></span></label>
+  </div>
+  <div class="switch-container"><span>AUTO_STATUS_REACT</span>
+    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_STATUS_REACT"><span class="slider"></span></label>
+  </div>
+  <div class="switch-container"><span>AUTO_VOICE</span>
+    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_VOICE"><span class="slider"></span></label>
+  </div>
+  <div class="switch-container"><span>AUTO_REPLY</span>
+    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_REPLY"><span class="slider"></span></label>
+  </div>
+  <div class="switch-container"><span>AUTO_STICKER</span>
+    <label class="toggle-switch"><input type="checkbox" id="toggle_AUTO_STICKER"><span class="slider"></span></label>
+  </div>
+  <button onclick="updateSetting()">UPDATE</button>
+
     </div>
 
     <div id="status"></div>
@@ -129,7 +146,13 @@
       fileSha = data.sha;
       currentContent = decodeURIComponent(escape(atob(data.content)));
       const json = JSON.parse(currentContent);
-      document.getElementById("toggleStatus").checked = json.AUTO_READ_STATUS === "on";
+      
+  const keys = ["ANTI_DELETE", "AUTO_READ_STATUS", "AUTO_STATUS_REPLY", "AUTO_STATUS_REACT", "AUTO_VOICE", "AUTO_REPLY", "AUTO_STICKER"];
+  keys.forEach(key => {
+    const el = document.getElementById("toggle_" + key);
+    if (el && json[key]) el.checked = json[key] === "on";
+  });
+
 
       document.getElementById("token-section").classList.add("hidden");
       document.getElementById("main-section").classList.remove("hidden");
@@ -143,7 +166,13 @@
         Accept: "application/vnd.github.v3+json"
       };
       const json = JSON.parse(currentContent);
-      json.AUTO_READ_STATUS = newStatus;
+      
+  const keys = ["ANTI_DELETE", "AUTO_READ_STATUS", "AUTO_STATUS_REPLY", "AUTO_STATUS_REACT", "AUTO_VOICE", "AUTO_REPLY", "AUTO_STICKER"];
+  keys.forEach(key => {
+    const el = document.getElementById("toggle_" + key);
+    if (el) json[key] = el.checked ? "on" : "off";
+  });
+
       const updatedContent = JSON.stringify(json, null, 2);
       const url = `https://api.github.com/repos/${username}/PRIME-NIYOX-DB/contents/settings/settings.json`;
 
