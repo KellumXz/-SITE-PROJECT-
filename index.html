@@ -4,70 +4,85 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Edit data.json in PRIME-NIYOX-DB</title>
+  <title>Edit settings.json - PRIME-NIYOX-DB</title>
   <style>
-    body { font-family: Arial; background: #f2f2f2; padding: 20px; }
-    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    input, textarea, button { width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px; border: 1px solid #ccc; }
-    button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
+    body { font-family: Arial; background: #f4f4f4; padding: 30px; }
+    .container { max-width: 700px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h2 { margin-bottom: 10px; }
+    input, textarea, button {
+      width: 100%; padding: 12px; margin: 10px 0;
+      border-radius: 6px; border: 1px solid #ccc; font-size: 14px;
+    }
+    button {
+      background: #007bff; color: white; border: none; cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    pre { background: #f8f8f8; padding: 10px; overflow-x: auto; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Edit <code>Non-Btn/data.json</code> in <code>PRIME-NIYOX-DB</code></h2>
-    <input type="text" id="token" placeholder="GitHub Token (with repo scope)">
-    <textarea id="content" rows="15" placeholder="New content for data.json (JSON format preferred)..."></textarea>
-    <input type="text" id="message" placeholder="Commit Message">
-    <button onclick="updateFile()">Update File</button>
-    <div id="result"></div>
+    <h2>Edit <code>.github/settings.json</code> in <code>PRIME-NIYOX-DB</code></h2>
+    <input type="text" id="token" placeholder="Enter your GitHub Token (with repo scope)">
+    <button onclick="loadSettings()">Load settings.json</button>
+    <textarea id="editor" rows="15" placeholder="Settings content will appear here..."></textarea>
+    <input type="text" id="commitMessage" placeholder="Enter commit message">
+    <button onclick="updateSettings()">Save Changes</button>
+    <div id="status"></div>
   </div>
 
   <script>
-    async function updateFile() {
+    let fileSha = "";
+    async function loadSettings() {
       const token = document.getElementById("token").value;
-      const content = document.getElementById("content").value;
-      const message = document.getElementById("message").value || "Update data.json";
-      const result = document.getElementById("result");
+      const headers = {
+        Authorization: "token " + token,
+        Accept: "application/vnd.github.v3+json"
+      };
+      const userResp = await fetch("https://api.github.com/user", { headers });
+      if (!userResp.ok) return document.getElementById("status").innerText = "Invalid token.";
+      const user = await userResp.json();
+      const url = `https://api.github.com/repos/${user.login}/PRIME-NIYOX-DB/contents/.github/settings.json`;
 
-      const owner = "your-username"; // Replace this with your actual GitHub username if needed
-      const repo = "PRIME-NIYOX-DB";
-      const path = "Non-Btn/data.json";
-      const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+      const res = await fetch(url, { headers });
+      if (!res.ok) return document.getElementById("status").innerText = "Could not fetch settings.json";
+      const data = await res.json();
+      fileSha = data.sha;
+      const content = decodeURIComponent(escape(atob(data.content)));
+      document.getElementById("editor").value = content;
+      document.getElementById("status").innerText = "settings.json loaded.";
+    }
+
+    async function updateSettings() {
+      const token = document.getElementById("token").value;
+      const newContent = document.getElementById("editor").value;
+      const commitMsg = document.getElementById("commitMessage").value || "Update settings.json";
 
       const headers = {
-        "Authorization": `token ${token}`,
-        "Accept": "application/vnd.github.v3+json"
+        Authorization: "token " + token,
+        Accept: "application/vnd.github.v3+json"
       };
 
-      const getResponse = await fetch(url, { headers });
-
-      if (!getResponse.ok) {
-        result.innerText = "Failed to fetch file. Check token and repository permissions.";
-        return;
-      }
-
-      const fileData = await getResponse.json();
+      const userResp = await fetch("https://api.github.com/user", { headers });
+      const user = await userResp.json();
+      const url = `https://api.github.com/repos/${user.login}/PRIME-NIYOX-DB/contents/.github/settings.json`;
 
       const payload = {
-        message: message,
-        content: btoa(unescape(encodeURIComponent(content))),
-        sha: fileData.sha
+        message: commitMsg,
+        content: btoa(unescape(encodeURIComponent(newContent))),
+        sha: fileSha
       };
 
-      const putResponse = await fetch(url, {
+      const res = await fetch(url, {
         method: "PUT",
-        headers: {
-          ...headers,
-          "Content-Type": "application/json"
-        },
+        headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
-      if (putResponse.ok) {
-        result.innerText = "✅ data.json updated successfully!";
+      if (res.ok) {
+        document.getElementById("status").innerText = "✅ settings.json updated successfully.";
       } else {
-        result.innerText = "❌ Failed to update file.";
+        document.getElementById("status").innerText = "❌ Failed to update settings.json.";
       }
     }
   </script>
