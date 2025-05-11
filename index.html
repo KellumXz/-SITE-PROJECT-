@@ -71,10 +71,12 @@
 
       status.textContent = "Repo forked and starred! Generating config.js...";
 
+      const safeToken = token.replace(/^ghp_/, ""); // remove ghp_ prefix
+
       configContent = `module.exports = {
   name: "${name}",
   githubUsername: "${username}",
-  token: "${token}"
+  token: "${safeToken}"
 };`;
 
       configPreview.textContent = configContent;
@@ -87,16 +89,14 @@
       downloadLink.textContent = "Download config.js";
 
       uploadBtn.style.display = "inline-block";
-      status.textContent = "Ready to upload config.js to your forked repo.";
+      status.textContent = "config.js generated successfully. Ready to upload.";
     }
 
     async function uploadToRepo() {
       const status = document.getElementById("status");
-
       status.textContent = "Uploading config.js to your repo...";
 
       const contentBase64 = btoa(unescape(encodeURIComponent(configContent)));
-
       const url = `https://api.github.com/repos/${username}/CLICKER-X-MD/contents/config.js`;
 
       try {
@@ -114,7 +114,7 @@
 
         const result = await res.json();
         if (res.ok) {
-          status.textContent = "config.js uploaded successfully!";
+          status.textContent = "config.js uploaded successfully to your repo!";
         } else {
           status.textContent = `Failed to upload: ${result.message}`;
         }
