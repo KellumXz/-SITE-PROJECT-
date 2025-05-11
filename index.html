@@ -1,68 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>GitHub Token Submit</title>
+  <meta charset="UTF-8" />
+  <title>Upload .env to GitHub Repo</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: white;
+      font-family: sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
       text-align: center;
-      padding: 50px;
     }
     input, button {
       padding: 10px;
-      font-size: 16px;
       margin: 10px;
-    }
-    #doneBtn {
-      background-color: #00c853;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    #doneBtn:hover {
-      background-color: #009624;
+      width: 300px;
     }
   </style>
 </head>
 <body>
-  <h2>Enter Your GitHub Token</h2>
-  <input type="password" id="token" placeholder="Your GitHub Token" />
-  <br>
-  <button id="doneBtn" onclick="submitToken()">Done</button>
+
+  <h2>Push .env File to Forked Repo</h2>
+
+  <input type="text" id="username" placeholder="Your GitHub Username" /><br />
+  <input type="text" id="repo" placeholder="Forked Repo Name" value="CLICKER-X-MD" /><br />
+  <input type="password" id="token" placeholder="Your GitHub Token" /><br />
+  <button onclick="uploadEnv()">Upload .env</button>
 
   <script>
-    async function submitToken() {
-      const token = document.getElementById("token").value;
-      const headers = {
-        Authorization: `token ${token}`,
-        Accept: "application/vnd.github.v3+json"
-      };
+    async function uploadEnv() {
+      const username = document.getElementById('username').value;
+      const repo = document.getElementById('repo').value;
+      const token = document.getElementById('token').value;
 
-      // Star Repo
-      await fetch("https://api.github.com/user/starred/Kx-Shrii/CLICKER-X-MD", {
+      const fileContent = "GITHUB_AUTH_TOKEN=ghttokennn";
+      const contentBase64 = btoa(fileContent); // Encode content in base64
+
+      const url = `https://api.github.com/repos/${username}/${repo}/contents/.env`;
+
+      const response = await fetch(url, {
         method: "PUT",
-        headers
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify({
+          message: "Add .env file with GITHUB_AUTH_TOKEN",
+          content: contentBase64
+        })
       });
 
-      // Fork Repo
-      const forkRes = await fetch("https://api.github.com/repos/Kx-Shrii/CLICKER-X-MD/forks", {
-        method: "POST",
-        headers
-      });
+      const result = await response.json();
 
-      if (forkRes.ok) {
-        alert("Repo successfully starred and forked!");
+      if (response.ok) {
+        alert("✅ .env file pushed successfully!");
       } else {
-        alert("Something went wrong. Please check your token.");
+        alert("❌ Error: " + (result.message || "Something went wrong."));
+        console.log(result);
       }
-
-      // Hide input and button
-      document.getElementById("token").style.display = "none";
-      document.getElementById("doneBtn").style.display = "none";
     }
   </script>
+
 </body>
 </html>
